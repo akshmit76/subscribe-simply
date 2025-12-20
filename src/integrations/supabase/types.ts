@@ -17,30 +17,30 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
+          dodo_customer_id: string | null
+          dodo_subscription_id: string | null
           email: string | null
           id: string
-          stripe_customer_id: string | null
-          stripe_subscription_id: string | null
           subscription_tier: string
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
+          dodo_customer_id?: string | null
+          dodo_subscription_id?: string | null
           email?: string | null
           id?: string
-          stripe_customer_id?: string | null
-          stripe_subscription_id?: string | null
           subscription_tier?: string
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
+          dodo_customer_id?: string | null
+          dodo_subscription_id?: string | null
           email?: string | null
           id?: string
-          stripe_customer_id?: string | null
-          stripe_subscription_id?: string | null
           subscription_tier?: string
           updated_at?: string
           user_id?: string

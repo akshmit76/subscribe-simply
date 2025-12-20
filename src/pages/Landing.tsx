@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { 
   Calendar, 
@@ -7,10 +7,25 @@ import {
   Shield, 
   Check,
   ArrowRight,
-  Sparkles
+  Sparkles,
+  Loader2
 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { useCheckout } from '@/hooks/useCheckout';
 
 export default function Landing() {
+  const { user } = useAuth();
+  const { createCheckoutSession, isLoading: checkoutLoading } = useCheckout();
+  const navigate = useNavigate();
+
+  const handleProUpgrade = async () => {
+    if (!user) {
+      navigate('/auth?signup=true&plan=pro');
+      return;
+    }
+    await createCheckoutSession();
+  };
+
   return (
     <div className="min-h-screen bg-gradient-hero">
       {/* Navigation */}
@@ -23,12 +38,20 @@ export default function Landing() {
             <span className="text-xl font-semibold">SubSage</span>
           </Link>
           <div className="flex items-center gap-4">
-            <Link to="/auth">
-              <Button variant="ghost" size="sm">Sign in</Button>
-            </Link>
-            <Link to="/auth?signup=true">
-              <Button variant="hero" size="sm">Get Started</Button>
-            </Link>
+            {user ? (
+              <Link to="/dashboard">
+                <Button variant="hero" size="sm">Dashboard</Button>
+              </Link>
+            ) : (
+              <>
+                <Link to="/auth">
+                  <Button variant="ghost" size="sm">Sign in</Button>
+                </Link>
+                <Link to="/auth?signup=true">
+                  <Button variant="hero" size="sm">Get Started</Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </nav>
@@ -123,6 +146,7 @@ export default function Landing() {
               ]}
               buttonText="Get Started"
               buttonVariant="outline"
+              href="/auth?signup=true"
             />
             <PricingCard 
               title="Pro"
@@ -139,6 +163,8 @@ export default function Landing() {
               buttonText="Start Pro Trial"
               buttonVariant="hero"
               highlighted
+              onClick={handleProUpgrade}
+              isLoading={checkoutLoading}
             />
           </div>
         </div>
@@ -204,7 +230,10 @@ function PricingCard({
   features, 
   buttonText,
   buttonVariant = 'default',
-  highlighted = false 
+  highlighted = false,
+  href,
+  onClick,
+  isLoading = false,
 }: { 
   title: string;
   price: string;
@@ -214,7 +243,28 @@ function PricingCard({
   buttonText: string;
   buttonVariant?: 'default' | 'outline' | 'hero';
   highlighted?: boolean;
+  href?: string;
+  onClick?: () => void;
+  isLoading?: boolean;
 }) {
+  const buttonContent = (
+    <Button 
+      variant={buttonVariant} 
+      className="w-full" 
+      onClick={onClick}
+      disabled={isLoading}
+    >
+      {isLoading ? (
+        <>
+          <Loader2 className="w-4 h-4 animate-spin mr-2" />
+          Processing...
+        </>
+      ) : (
+        buttonText
+      )}
+    </Button>
+  );
+
   return (
     <div className={`p-8 rounded-2xl border ${
       highlighted 
@@ -242,11 +292,13 @@ function PricingCard({
         ))}
       </ul>
       
-      <Link to="/auth?signup=true">
-        <Button variant={buttonVariant} className="w-full">
-          {buttonText}
-        </Button>
-      </Link>
+      {href && !onClick ? (
+        <Link to={href}>
+          {buttonContent}
+        </Link>
+      ) : (
+        buttonContent
+      )}
     </div>
   );
 }

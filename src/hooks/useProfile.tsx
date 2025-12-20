@@ -28,6 +28,7 @@ export function useProfile() {
   return {
     profile: profileQuery.data,
     isLoading: profileQuery.isLoading,
+    refetch: profileQuery.refetch,
     isPro,
     canAddSubscription,
   };

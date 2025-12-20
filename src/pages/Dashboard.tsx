@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscriptions } from '@/hooks/useSubscriptions';
 import { useProfile } from '@/hooks/useProfile';
+import { useCheckout } from '@/hooks/useCheckout';
 import { Button } from '@/components/ui/button';
 import { 
   Sparkles, 
@@ -13,8 +14,9 @@ import {
   LogOut,
   LayoutGrid,
   List,
-  Flag,
-  Loader2
+  Settings,
+  Loader2,
+  Crown
 } from 'lucide-react';
 import { SubscriptionCard } from '@/components/SubscriptionCard';
 import { SubscriptionTable } from '@/components/SubscriptionTable';
@@ -24,16 +26,37 @@ import { InsightsPanel } from '@/components/InsightsPanel';
 import { EmptyState } from '@/components/EmptyState';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 export default function Dashboard() {
   const { user, loading: authLoading, signOut } = useAuth();
   const { subscriptions, isLoading: subsLoading } = useSubscriptions();
-  const { isPro, canAddSubscription } = useProfile();
+  const { isPro, canAddSubscription, refetch: refetchProfile } = useProfile();
+  const { createCheckoutSession, openCustomerPortal, isLoading: checkoutLoading } = useCheckout();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   
   const [view, setView] = useState<'cards' | 'table'>('cards');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
+
+  // Handle checkout success
+  useEffect(() => {
+    const checkoutStatus = searchParams.get('checkout');
+    if (checkoutStatus === 'success') {
+      toast.success('Welcome to SubSage Pro! Your subscription is now active.');
+      searchParams.delete('checkout');
+      setSearchParams(searchParams);
+      // Refetch profile to get updated tier
+      refetchProfile();
+    }
+  }, [searchParams, setSearchParams, refetchProfile]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -52,6 +75,14 @@ export default function Dashboard() {
       return;
     }
     setDialogOpen(true);
+  };
+
+  const handleUpgrade = async () => {
+    await createCheckoutSession();
+  };
+
+  const handleManageSubscription = async () => {
+    await openCustomerPortal();
   };
 
   if (authLoading || subsLoading) {
@@ -74,17 +105,58 @@ export default function Dashboard() {
               <Sparkles className="w-4 h-4 text-primary-foreground" />
             </div>
             <span className="text-xl font-semibold">SubSage</span>
+            {isPro && (
+              <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium flex items-center gap-1">
+                <Crown className="w-3 h-3" />
+                Pro
+              </span>
+            )}
           </Link>
           
           <div className="flex items-center gap-3">
-            {!isPro && (
-              <Button variant="hero-outline" size="sm" onClick={() => toast.info('Stripe integration coming soon!')}>
+            {!isPro ? (
+              <Button 
+                variant="hero-outline" 
+                size="sm" 
+                onClick={handleUpgrade}
+                disabled={checkoutLoading}
+              >
+                {checkoutLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <Crown className="w-4 h-4 mr-2" />
+                )}
                 Upgrade to Pro
               </Button>
+            ) : (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <Settings className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleManageSubscription} disabled={checkoutLoading}>
+                    {checkoutLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : (
+                      <CreditCard className="w-4 h-4 mr-2" />
+                    )}
+                    Manage Subscription
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut}>
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
-            <Button variant="ghost" size="icon" onClick={handleSignOut}>
-              <LogOut className="w-4 h-4" />
-            </Button>
+            {!isPro && (
+              <Button variant="ghost" size="icon" onClick={handleSignOut}>
+                <LogOut className="w-4 h-4" />
+              </Button>
+            )}
           </div>
         </div>
       </header>
