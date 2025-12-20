@@ -17,7 +17,8 @@ import {
   Pencil, 
   Trash2, 
   Flag,
-  ArrowUpDown
+  ArrowUpDown,
+  CheckCircle
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -26,6 +27,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { format, parseISO, differenceInDays } from 'date-fns';
+import { calculateNextBillingDate } from '@/lib/subscriptionUtils';
 
 interface SubscriptionTableProps {
   subscriptions: Subscription[];
@@ -143,6 +145,18 @@ export function SubscriptionTable({ subscriptions }: SubscriptionTableProps) {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      <DropdownMenuItem 
+                        onClick={() => {
+                          const nextDate = calculateNextBillingDate(new Date(), sub.billing_cycle);
+                          updateSubscription({ 
+                            id: sub.id, 
+                            next_billing_date: format(nextDate, 'yyyy-MM-dd') 
+                          });
+                        }}
+                      >
+                        <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
+                        Mark as Paid
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => setEditingSub(sub)}>
                         <Pencil className="w-4 h-4 mr-2" />
                         Edit

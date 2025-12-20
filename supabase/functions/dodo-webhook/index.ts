@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
+import { Webhook } from "npm:standardwebhooks";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -17,8 +18,38 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const body = await req.json();
-    console.log('Webhook received:', body.type, body);
+    const WEBHOOK_KEY = Deno.env.get('DODO_PAYMENTS_WEBHOOK_KEY');
+    
+    // Get raw body for signature verification
+    const rawBody = await req.text();
+    const body = JSON.parse(rawBody);
+    
+    console.log('Webhook received:', body.type);
+
+    // Verify webhook signature if key is configured
+    if (WEBHOOK_KEY) {
+      try {
+        const webhookId = req.headers.get('webhook-id');
+        const webhookSignature = req.headers.get('webhook-signature');
+        const webhookTimestamp = req.headers.get('webhook-timestamp');
+        
+        if (webhookId && webhookSignature && webhookTimestamp) {
+          const wh = new Webhook(WEBHOOK_KEY);
+          wh.verify(rawBody, {
+            'webhook-id': webhookId,
+            'webhook-signature': webhookSignature,
+            'webhook-timestamp': webhookTimestamp,
+          });
+          console.log('Webhook signature verified');
+        }
+      } catch (verifyError) {
+        console.error('Webhook signature verification failed:', verifyError);
+        return new Response(JSON.stringify({ error: 'Invalid webhook signature' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
 
     const eventType = body.type;
     const data = body.data;
