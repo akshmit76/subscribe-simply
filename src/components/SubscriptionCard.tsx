@@ -10,7 +10,8 @@ import {
   Trash2, 
   Flag,
   Calendar,
-  CreditCard
+  CreditCard,
+  CheckCircle
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -19,6 +20,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { format, differenceInDays, parseISO } from 'date-fns';
+import { calculateNextBillingDate } from '@/lib/subscriptionUtils';
 
 interface SubscriptionCardProps {
   subscription: Subscription;
@@ -45,6 +47,14 @@ export function SubscriptionCard({ subscription }: SubscriptionCardProps) {
 
   const toggleFlag = () => {
     updateSubscription({ id: subscription.id, is_flagged: !subscription.is_flagged });
+  };
+
+  const handleMarkAsPaid = () => {
+    const nextDate = calculateNextBillingDate(new Date(), subscription.billing_cycle);
+    updateSubscription({ 
+      id: subscription.id, 
+      next_billing_date: format(nextDate, 'yyyy-MM-dd') 
+    });
   };
 
   return (
@@ -74,6 +84,10 @@ export function SubscriptionCard({ subscription }: SubscriptionCardProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleMarkAsPaid}>
+                <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
+                Mark as Paid
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setEditOpen(true)}>
                 <Pencil className="w-4 h-4 mr-2" />
                 Edit

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
+import DodoPayments from "npm:dodopayments";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -43,37 +44,32 @@ serve(async (req) => {
     }
 
     const DODO_API_KEY = Deno.env.get('DODO_PAYMENTS_API_KEY');
+    const DODO_ENVIRONMENT = Deno.env.get('DODO_PAYMENTS_ENVIRONMENT') || 'test_mode';
     
     if (!DODO_API_KEY) {
       throw new Error('Dodo Payments configuration missing');
     }
 
-    const origin = req.headers.get('origin') || 'https://ubzyrkefjqmycjrkpueu.lovableproject.com';
+    console.log('Creating Dodo Payments client for customer portal with environment:', DODO_ENVIRONMENT);
 
-    // Create customer portal session
-    const response = await fetch(`https://api.dodopayments.com/customers/${profile.dodo_customer_id}/customer_portal`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${DODO_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        return_url: `${origin}/dashboard`,
-        send_email: false,
-      }),
+    // Initialize Dodo Payments SDK
+    const client = new DodoPayments({
+      bearerToken: DODO_API_KEY,
+      environment: DODO_ENVIRONMENT as 'test_mode' | 'live_mode',
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Dodo API error:', errorText);
-      throw new Error(`Dodo API error: ${response.status}`);
-    }
+    // Create customer portal session using SDK
+    const portalSession = await client.customers.customerPortal.create(
+      profile.dodo_customer_id,
+      {
+        send_email: false,
+      }
+    );
 
-    const portalData = await response.json();
     console.log('Customer portal session created');
 
     return new Response(JSON.stringify({ 
-      portal_url: portalData.link,
+      portal_url: portalSession.link,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

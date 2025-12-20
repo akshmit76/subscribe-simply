@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
+import DodoPayments from "npm:dodopayments";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -34,6 +35,7 @@ serve(async (req) => {
 
     const DODO_API_KEY = Deno.env.get('DODO_PAYMENTS_API_KEY');
     const DODO_PRODUCT_ID = Deno.env.get('DODO_PAYMENTS_PRODUCT_ID');
+    const DODO_ENVIRONMENT = Deno.env.get('DODO_PAYMENTS_ENVIRONMENT') || 'test_mode';
     
     if (!DODO_API_KEY || !DODO_PRODUCT_ID) {
       throw new Error('Dodo Payments configuration missing');
@@ -41,49 +43,35 @@ serve(async (req) => {
 
     const origin = req.headers.get('origin') || 'https://ubzyrkefjqmycjrkpueu.lovableproject.com';
 
-    // Create checkout session using Dodo Payments API
-    const response = await fetch('https://api.dodopayments.com/checkout_sessions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${DODO_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        billing: {
-          city: '',
-          country: 'IN',
-          state: '',
-          street: '',
-          zipcode: '',
-        },
-        customer: {
-          email: user.email,
-          name: user.email?.split('@')[0] || 'Customer',
-        },
-        product_cart: [{
-          product_id: DODO_PRODUCT_ID,
-          quantity: 1,
-        }],
-        payment_link: true,
-        return_url: `${origin}/dashboard?checkout=success`,
-        metadata: {
-          user_id: user.id,
-        },
-      }),
+    console.log('Creating Dodo Payments client with environment:', DODO_ENVIRONMENT);
+
+    // Initialize Dodo Payments SDK
+    const client = new DodoPayments({
+      bearerToken: DODO_API_KEY,
+      environment: DODO_ENVIRONMENT as 'test_mode' | 'live_mode',
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Dodo API error:', errorText);
-      throw new Error(`Dodo API error: ${response.status}`);
-    }
+    // Create checkout session using SDK
+    const checkoutSession = await client.checkoutSessions.create({
+      product_cart: [{
+        product_id: DODO_PRODUCT_ID,
+        quantity: 1,
+      }],
+      customer: {
+        email: user.email || '',
+        name: user.email?.split('@')[0] || 'Customer',
+      },
+      return_url: `${origin}/dashboard?checkout=success`,
+      metadata: {
+        user_id: user.id,
+      },
+    });
 
-    const checkoutData = await response.json();
-    console.log('Checkout session created:', checkoutData.session_id);
+    console.log('Checkout session created:', checkoutSession.session_id);
 
     return new Response(JSON.stringify({ 
-      checkout_url: checkoutData.url,
-      session_id: checkoutData.session_id,
+      checkout_url: checkoutSession.checkout_url,
+      session_id: checkoutSession.session_id,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
