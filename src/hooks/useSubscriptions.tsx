@@ -88,6 +88,7 @@ export function useSubscriptions() {
     subscriptions: subscriptionsQuery.data ?? [],
     isLoading: subscriptionsQuery.isLoading,
     error: subscriptionsQuery.error,
+    refetch: subscriptionsQuery.refetch,
     createSubscription: createMutation.mutate,
     updateSubscription: updateMutation.mutate,
     deleteSubscription: deleteMutation.mutate,
